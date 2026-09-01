@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
-<title>Poker Tool</title>
+<title>DealDeck</title>
 <style>
 body {
   margin:0; padding:16px; background:#000;
@@ -201,18 +201,18 @@ input:disabled { opacity:0.4; cursor:not-allowed; filter:grayscale(40%); }
   <div class="controls-wrapper">
     <div class="controls-row">
       <button id="clear">Clear</button>
-      <button id="dealHero" style="line-height:1.2;">Rnd<br>Hero</button>
-      <button id="setHeroBtn" style="background:#2255aa;line-height:1.2;">Set<br>Hero</button>
+      <button id="dealHero" style="line-height:1.2;">Deal<br>Hero</button>
+      <button id="setHeroBtn" style="background:#2255aa;line-height:1.2;">Select<br>Hero</button>
     </div>
     <div class="controls-row">
-      <button id="dealFlop" style="line-height:1.2;">Rnd<br>Flop</button>
-      <button id="dealTurn" disabled style="line-height:1.2;">Rnd<br>Turn</button>
-      <button id="dealRiver" disabled style="line-height:1.2;">Rnd<br>River</button>
+      <button id="dealFlop" style="line-height:1.2;">Deal<br>Flop</button>
+      <button id="dealTurn" disabled style="line-height:1.2;">Deal<br>Turn</button>
+      <button id="dealRiver" disabled style="line-height:1.2;">Deal<br>River</button>
     </div>
     <div class="controls-row">
-      <button id="setFlopBtn" style="background:#996600;line-height:1.2;">Set<br>Flop</button>
-      <button id="setTurnBtn" style="background:#996600;line-height:1.2;" disabled>Set<br>Turn</button>
-      <button id="setRiverBtn" style="background:#996600;line-height:1.2;" disabled>Set<br>River</button>
+      <button id="setFlopBtn" style="background:#996600;line-height:1.2;">Select<br>Flop</button>
+      <button id="setTurnBtn" style="background:#996600;line-height:1.2;" disabled>Select<br>Turn</button>
+      <button id="setRiverBtn" style="background:#996600;line-height:1.2;" disabled>Select<br>River</button>
     </div>
   </div>
 </div>
@@ -530,16 +530,16 @@ input:disabled { opacity:0.4; cursor:not-allowed; filter:grayscale(40%); }
     pickerSelected=[];
     pendingRank=null;
     if(mode==='hero'){
-      pickerMax=2; pickerTitle.textContent='Set Hero Hand';
+      pickerMax=2; pickerTitle.textContent='Select Hero Hand';
       pickerSub.textContent='Pick rank → suit for each card (need 2)';
     } else if(mode==='flop'){
-      pickerMax=3; pickerTitle.textContent='Set Flop';
+      pickerMax=3; pickerTitle.textContent='Select Flop';
       pickerSub.textContent='Pick rank → suit for each card (need 3)';
     } else if(mode==='turn'){
-      pickerMax=1; pickerTitle.textContent='Set Turn';
+      pickerMax=1; pickerTitle.textContent='Select Turn';
       pickerSub.textContent='Pick a rank then its suit';
     } else if(mode==='river'){
-      pickerMax=1; pickerTitle.textContent='Set River';
+      pickerMax=1; pickerTitle.textContent='Select River';
       pickerSub.textContent='Pick a rank then its suit';
     }
     renderTray();
