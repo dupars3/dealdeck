@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
+<title>DealDeck</title>
+<style>
+*{box-sizing:border-box}
+html,body{overflow-x:hidden;max-width:100%}
+body{
+  margin:0;padding:0;background:#000;
+  font-family:-apple-system,"SF Pro Rounded","SF Pro Display","Helvetica Neue",sans-serif;
+  color:#fff;display:flex;flex-direction:column;align-items:center;min-height:100dvh;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+}
+
+/* Counter */
+#counter{
+  font-size:18px;font-weight:500;letter-spacing:.04em;color:#d8d8dd;
+  display:inline-block;margin:16px auto 14px;padding:10px 24px;
+  background:#000;border-radius:14px;
+}
+.separator{color:#555;margin:0 8px}
+#freqReadout{
+  font-size:13px;font-weight:500;color:#888;letter-spacing:.02em;
+  margin:8px auto 14px;text-align:center;
+}
+#freqReadout .freq-pct{color:#ffb84d;font-weight:700}
+
+/* Card table */
+.table-container{
+  display:flex;flex-direction:column;align-items:center;
+  gap:44px;width:100%;max-width:520px;padding:0 16px;
+}
+#board{display:flex;gap:8px;justify-content:center;width:100%;align-items:flex-start}
+.card-block{display:flex;flex-direction:column;align-items:center;gap:10px}
+.card-group{display:flex;gap:8px}
+.tray-line{width:calc(100% - 12px);height:0;border-bottom:1px solid rgba(255,255,255,.75)}
+.hands-row{display:flex;gap:40px;justify-content:center;width:100%}
+.player-block{display:flex;flex-direction:column;align-items:center;gap:10px}
+.player-cards{display:flex;gap:8px}
+.card{
+  width:80px;height:110px;border-radius:10px;
+  background:#fff;color:#000;display:flex;justify-content:center;align-items:center;
+  font-weight:700;font-size:26px;box-shadow:0 4px 12px rgba(0,0,0,.5);
+}
+.card.back{
+  background-color:#b74b4b;
+  background-image:
+    repeating-linear-gradient(45deg,rgba(255,255,255,.06),rgba(255,255,255,.06) 2px,transparent 2px,transparent 10px),
+    repeating-linear-gradient(-45deg,rgba(255,255,255,.06),rgba(255,255,255,.06) 2px,transparent 2px,transparent 10px);
+  color:transparent;
+}
+.card.deal{opacity:0;transform:translateY(-20px);animation:drop .5s forwards}
+@keyframes drop{to{opacity:1;transform:translateY(0)}}
+.card{transition:transform .08s,box-shadow .12s}
+.card-tap{cursor:pointer}
+.card-tap.blocked{cursor:not-allowed}
+.card-tap:not(.blocked):active{transform:scale(1.05);box-shadow:0 8px 22px rgba(0,0,0,.7)}
+
+/* Main buttons */
+.controls-wrapper{
+  display:flex;flex-direction:column;align-items:center;
+  gap:27px;margin-top:48px;width:100%;max-width:380px;padding:0 12px;
+}
+.controls-row{display:flex;gap:14px;justify-content:flex-start;width:100%}
+button{
+  width:100px;height:100px;border-radius:50%;border:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;cursor:pointer;color:#fff;flex-shrink:0;
+  transition:filter .12s,transform .08s;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;padding:0;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+}
+button:not(:disabled):active{filter:brightness(1.4);transform:scale(1.08);position:relative;z-index:2}
+button:disabled{opacity:.35;cursor:not-allowed;filter:none;transform:none}
+.btn-main{font-size:40px;font-weight:700;line-height:1;letter-spacing:-.5px}
+.btn-sub{font-size:14px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;line-height:1;opacity:.9}
+
+/* Button colors */
+#clear.bar-btn{
+  width:100%;height:56px;border-radius:14px;
+  font-size:19px;font-weight:700;letter-spacing:.02em;
+  background:#525254;
+}
+#dealHero{background:#8a8a8e}
+#dealFlop,#dealTurn,#dealRiver{background:#FF9F0A}
+
+/* Flop filter toggles */
+.flop-filters{
+  display:flex;flex-direction:column;align-items:flex-start;
+  gap:10px;width:100%;
+}
+.ace-filter-row{display:flex;align-items:center;width:100%}
+.toggle-row{display:flex;width:100%}
+.toggle-btn,.toggle-spacer{
+  height:53px;border-radius:0;padding:0 14px;position:relative;
+  flex:1 1 0;width:auto;min-width:0;
+}
+.toggle-spacer{visibility:hidden;pointer-events:none}
+.toggle-btn{
+  border-top:1.5px solid #444;border-bottom:1.5px solid #444;border-right:1.5px solid #444;border-left:none;
+  font-size:13px;font-weight:600;letter-spacing:.04em;
+  background:#1a1a1c;color:#666;cursor:pointer;
+  transition:background .15s,color .15s;white-space:nowrap;flex-shrink:0;
+}
+.toggle-btn:first-child{border-left:1.5px solid #444;border-top-left-radius:26px;border-bottom-left-radius:26px}
+.toggle-btn.last-btn{border-top-right-radius:26px;border-bottom-right-radius:26px}
+.toggle-btn:hover{filter:none;transform:none}
+.toggle-btn:not(:disabled):active{transform:scale(1.06);transition:background .1s,transform .08s}
+.toggle-btn.active-any,.toggle-btn.active-tall,
+.toggle-btn.active-acehi,.toggle-btn.active-noace,
+.toggle-btn.active-normal,.toggle-btn.active-straight,
+.toggle-btn.active-toppair,.toggle-btn.active-botpair,
+.toggle-btn.active-monotone{background:#3a2a10;color:#ffb84d}
+/* Press states keyed to each button's permanent data attribute — not the
+   selected-state class — so the very first press (before it's selected)
+   still shows the correct color. */
+.toggle-btn[data-ace="any"]:not(:disabled):active,
+.toggle-btn[data-ace="acehi"]:not(:disabled):active,
+.toggle-btn[data-ace="noace"]:not(:disabled):active,
+.toggle-btn[data-tex="all"]:not(:disabled):active,
+.toggle-btn[data-tex="normal"]:not(:disabled):active,
+.toggle-btn[data-tex="straight"]:not(:disabled):active,
+.toggle-btn[data-tex="toppair"]:not(:disabled):active,
+.toggle-btn[data-tex="botpair"]:not(:disabled):active,
+.toggle-btn[data-tex="monotone"]:not(:disabled):active{background:#FF9F0A}
+
+/* Card picker modal */
+#pickerOverlay{
+  display:none;position:fixed;inset:0;z-index:1000;
+  background:rgba(0,0,0,.88);align-items:flex-end;justify-content:center;
+  touch-action:none;
+}
+#pickerOverlay.open{display:flex}
+#pickerPanel{
+  background:#1c1c1e;border-radius:20px 20px 0 0;
+  width:452px;max-width:100%;max-height:90dvh;
+  display:flex;flex-direction:column;padding:14px 14px 0;overflow:hidden;
+}
+#pickerScroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;min-height:0}
+#pickerTitle{font-size:22px;font-weight:700;text-align:center;margin:0 0 4px;color:#fff}
+#pickerSubtitle{font-size:16px;text-align:center;color:#999;margin:0 0 14px}
+#pickerSelected{
+  display:flex;gap:8px;justify-content:center;flex-wrap:wrap;
+  min-height:64px;margin-bottom:14px;padding:8px 10px;
+  background:#111;border-radius:12px;align-items:center;
+}
+.sel-card{
+  background:#fff;border-radius:8px;font-size:28px;font-weight:700;
+  padding:8px 14px;display:flex;align-items:center;gap:8px;cursor:pointer;line-height:1;
+}
+.sel-card .remove{color:#c00;font-size:18px;margin-left:2px}
+.sel-placeholder{color:#555;font-size:16px}
+#stepIndicator{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px}
+.step-pill{padding:6px 18px;border-radius:24px;font-size:16px;font-weight:700;background:#2a2a2c;color:#888}
+.step-pill.active{background:#FF9F0A;color:#fff}
+.step-pill.done{background:#3a3a3c;color:#888}
+.step-arrow{color:#444;font-size:13px}
+#rankGrid{display:grid;grid-template-columns:repeat(4,100px);justify-content:center;gap:8px;margin-bottom:4px}
+#rankGrid .rank-btn{
+  width:100px;height:100px;border-radius:50%;border:2px solid transparent;
+  font-size:36px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  background:#2a2a2c;color:#fff;touch-action:manipulation;
+  transition:opacity .15s,transform .1s,border-color .15s;
+}
+#rankGrid .rank-btn.active-rank{border-color:#FF9F0A;background:#3a2800;color:#FF9F0A}
+#rankGrid .rank-btn:not(.active-rank):not(:disabled):active{transform:scale(1.08);background:#636366 !important;filter:none}
+#suitGrid{display:grid;grid-template-columns:repeat(4,100px);justify-content:center;gap:8px;margin-bottom:4px}
+#suitGrid .suit-btn{
+  width:100px;height:100px;border-radius:50%;border:2px solid transparent;
+  font-size:60px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  background:#2a2a2c;touch-action:manipulation;transition:opacity .15s,transform .1s;
+}
+#suitGrid .suit-btn.dealt{opacity:.22;cursor:not-allowed;filter:grayscale(60%)}
+#suitGrid .suit-btn:not(.dealt):active{transform:scale(1.08);background:#636366 !important;filter:none}
+#stepBackBtn{
+  width:auto;height:auto;max-width:220px;margin:0 auto 10px;padding:12px 20px;
+  border-radius:12px;border:1.5px solid #3a7bc8;
+  background:#4DA6FF;color:#fff;font-size:16px;font-weight:600;
+  cursor:pointer;touch-action:manipulation;
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  box-sizing:border-box;transition:filter .12s,transform .08s;
+}
+#stepBackBtn:not(:disabled):active{background:#4DA6FF;filter:brightness(1.3);transform:scale(1.08);border-color:#6bb8ff}
+#pickerActions{
+  flex-shrink:0;display:flex;gap:10px;
+  padding:10px 0 max(16px,env(safe-area-inset-bottom));background:#1c1c1e;
+}
+#pickerCancel,#pickerConfirm{
+  flex:1;height:50px;border-radius:10px;border:none;
+  font-size:16px;font-weight:600;cursor:pointer;
+}
+#pickerCancel{background:#3a3a3c;color:#fff}
+#pickerConfirm{background:#FF9F0A;color:#fff}
+#pickerConfirm:disabled{opacity:.35;cursor:not-allowed}
+
+/* Mobile */
+@media(max-width:480px){
+  html,body{overflow:hidden;height:100%}
+  #counter{font-size:19px;margin:16px auto 24px;padding:9px 20px}
+  .table-container{gap:26px;padding:0;width:100%;max-width:100%}
+  #board{gap:8px;padding:0 8px}
+  #board .card,.hands-row .card{
+    width:calc((100vw - 48px) / 5);
+    height:calc((100vw - 48px) / 5 * 1.4);
+    font-size:32px;border-radius:6px;
+  }
+  .hands-row{gap:16px;padding:0 8px}
+  .player-cards{gap:8px}
+  .controls-wrapper{gap:21px;padding:0 20px;width:100%;max-width:100%;margin-top:27px}
+  #freqReadout{font-size:14px}
+  .controls-row{gap:0;justify-content:space-between}
+  .flop-filters{gap:8px}
+  .toggle-row{gap:0}
+  .toggle-btn+.toggle-btn{border-left:none}
+  .toggle-btn,.toggle-spacer{height:53px !important;font-size:11px !important;padding:0 !important;letter-spacing:0}
+  button{width:75px;height:75px}
+  .btn-main{font-size:29px}
+  .btn-sub{font-size:9px;letter-spacing:.12em}
+  #rankGrid{grid-template-columns:repeat(4,82px);gap:6px}
+  #rankGrid .rank-btn{width:82px !important;height:82px !important;font-size:32px}
+  #suitGrid{grid-template-columns:repeat(4,82px);gap:6px}
+  #suitGrid .suit-btn{width:82px !important;height:82px !important;font-size:38px}
+  #pickerPanel{padding:12px 10px 0;width:100%}
+  #pickerTitle{font-size:19px}
+  #pickerSubtitle{font-size:14px}
+  .step-pill{font-size:14px;padding:5px 14px}
+  .sel-card{font-size:24px;padding:6px 12px}
+  .sel-card .remove{font-size:16px}
+  #stepBackBtn{padding:10px 18px;font-size:14px;max-width:200px}
+}
+
+/* Landscape block — phones only (short viewport), never laptops */
+#rotateNotice{display:none}
+@media (orientation:landscape) and (max-height:500px){
+  #app,#pickerOverlay{display:none !important}
+  #rotateNotice{
+    display:flex;position:fixed;inset:0;z-index:9999;
+    background:#000;color:#fff;
+    flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;text-align:center;padding:24px;
+  }
+  #rotateNotice .icon{font-size:44px;line-height:1}
+  #rotateNotice .msg{font-size:17px;font-weight:600;letter-spacing:.02em}
+  #rotateNotice .sub{font-size:13px;color:#888;font-weight:400}
+}
+
+/* App wrapper */
+#app{display:flex;flex-direction:column;align-items:center;width:100%}
+
+/* Desktop */
+@media(min-width:601px){
+  #app{transform:scale(.72);transform-origin:top center;margin-bottom:calc((.72 - 1) * 100%)}
+  #counter{font-size:26px;padding:14px 32px}
+  #freqReadout{font-size:19px;margin:12px auto 18px}
+  #board{width:auto}
+  #app #board .card,#app .hands-row .card{
+    width:106px !important;height:145px !important;
+    font-size:45px !important;border-radius:10px !important;
+  }
+  .tray-line{width:calc(100% - 20px)}
+  .flop-filters{gap:8px;max-width:460px;margin:0 auto;align-items:flex-start}
+  .controls-wrapper{max-width:520px;padding:0 16px}
+  .controls-row{max-width:460px;margin:0 auto;justify-content:center}
+  #clear.bar-btn{max-width:460px;margin:0 auto}
+  #rankGrid{grid-template-columns:repeat(4,72px);gap:6px}
+  #rankGrid .rank-btn{width:72px !important;height:72px !important;font-size:26px}
+  #suitGrid{grid-template-columns:repeat(4,72px);gap:6px}
+  #suitGrid .suit-btn{width:72px !important;height:72px !important;font-size:43px}
+  #pickerPanel{width:334px}
+}
+</style>
+</head>
+<body>
+<div id="rotateNotice">
+  <div class="icon">📱</div>
+  <div class="msg">Please rotate your device</div>
+  <div class="sub">DealDeck works in portrait mode</div>
+</div>
+<div id="app">
+
+<div id="counter">
+  F 0 <span class="separator">|</span> T 0
+  <span class="separator">|</span> R 0
+  <span class="separator">|</span> Cards Left 52
+</div>
+<div id="freqReadout"></div>
+
+<div class="table-container">
+  <div id="board">
+    <div class="card-block">
+      <div class="card-group" id="flopGroup"></div>
+      <div class="tray-line" id="flopTrayLine"></div>
+    </div>
+    <div class="card-block">
+      <div class="card-group" id="turnGroup"></div>
+      <div class="tray-line" id="turnTrayLine"></div>
+    </div>
+    <div class="card-block">
+      <div class="card-group" id="riverGroup"></div>
+      <div class="tray-line" id="riverTrayLine"></div>
+    </div>
+  </div>
+  <div class="hands-row">
+    <div class="player-block" id="villainBlock">
+      <div id="villain" class="player-cards"></div>
+    </div>
+    <div class="player-block" id="heroBlock">
+      <div id="hero" class="player-cards"></div>
+      <div class="tray-line" id="heroTrayLine"></div>
+    </div>
+  </div>
+
+  <div class="controls-wrapper">
+    <button id="clear" class="bar-btn">Clear</button>
+    <div class="flop-filters">
+      <div class="ace-filter-row">
+        <div class="toggle-row" id="aceToggleRow">
+          <button class="toggle-btn active-any" data-ace="any">ALL</button>
+          <button class="toggle-btn" data-ace="noace">NO ACE</button>
+          <button class="toggle-btn last-btn" data-ace="acehi">ACE HI</button>
+          <div class="toggle-spacer" aria-hidden="true"></div>
+          <div class="toggle-spacer" aria-hidden="true"></div>
+          <div class="toggle-spacer" aria-hidden="true"></div>
+        </div>
+      </div>
+      <div class="toggle-row" id="texToggleRow">
+        <button class="toggle-btn active-tall" data-tex="all">ALL</button>
+        <button class="toggle-btn" data-tex="normal">NORM</button>
+        <button class="toggle-btn" data-tex="straight">STR8</button>
+        <button class="toggle-btn" data-tex="toppair">TOP PR</button>
+        <button class="toggle-btn" data-tex="botpair">BOT PR</button>
+        <button class="toggle-btn last-btn" data-tex="monotone">MONO</button>
+      </div>
+    </div>
+
+    <div class="controls-row">
+      <button id="dealHero"><span class="btn-main">H</span></button>
+      <button id="dealFlop"><span class="btn-main">F</span></button>
+      <button id="dealTurn" disabled><span class="btn-main">T</span></button>
+      <button id="dealRiver" disabled><span class="btn-main">R</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- Card Picker Modal -->
+<div id="pickerOverlay">
+  <div id="pickerPanel">
+    <div id="pickerTitle">Pick Cards</div>
+    <div id="pickerSubtitle">Tap a rank, then choose a suit</div>
+    <div id="pickerScroll">
+      <div id="pickerSelected"><span class="sel-placeholder">No cards selected</span></div>
+      <div id="stepIndicator">
+        <span class="step-pill active" id="step1pill">1 · Rank</span>
+        <span class="step-arrow">›</span>
+        <span class="step-pill" id="step2pill">2 · Suit</span>
+      </div>
+      <div id="rankGrid"></div>
+      <button id="stepBackBtn" style="display:none">← Back to ranks</button>
+      <div id="suitGrid" style="display:none"></div>
+    </div>
+    <div id="pickerActions">
+      <button id="pickerCancel">Cancel</button>
+      <button id="pickerConfirm" disabled>Confirm</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+(() => {
+  const ranks    = ['A','K','Q','J','10','9','8','7','6','5','4','3','2'];
+  const suitKeys = ['S','H','D','C'];
+  const suitSym  = {S:'♠',H:'♥',D:'♦',C:'♣'};
+  const suitColor= {S:'#fff',H:'#ff5555',D:'#4DA6FF',C:'#66dd66'};
+  const rankOrder= {A:14,K:13,Q:12,J:11,'10':10,9:9,8:8,7:7,6:6,5:5,4:4,3:3,2:2};
+
+  const buildDeck=()=>{const d=[];for(const r of ranks)for(const s of suitKeys)d.push(r+s);return d};
+  const shuffle=d=>{for(let i=d.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[d[i],d[j]]=[d[j],d[i]]}};
+  const cardRank=c=>c.slice(0,-1);
+  const cardSuit=c=>c.slice(-1);
+  const rankVal=c=>rankOrder[cardRank(c)];
+  const hasAce=cards=>cards.some(c=>cardRank(c)==='A');
+  const cardDisplay=c=>cardRank(c)+suitSym[cardSuit(c)];
+
+  let deck=[],hero=[],board=[null,null,null,null,null],counters={flop:0,turn:0,river:0};
+  let aceFilter='any',texFilter='all';
+
+  // Real-world flop-combination frequencies (out of all 22,100 possible 3-card
+  // flops from a 52-card deck). This is the TRUE gameplay match-probability:
+  // a tripped flop satisfies both this app's isTopPair and isBotPair checks
+  // in full during actual dealing, so the trip count is added to both (not
+  // split), matching what a user will actually experience when dealing under
+  // either filter. As a result TOP PR + BOT PR overlap and won't sum cleanly
+  // to 100% alongside NORM/STR8/MONO — that's expected, since this reflects
+  // real match odds rather than a mutually-exclusive statistical partition.
+  const FLOP_FREQ={
+    any:  {all:100,   normal:58.4, straight:19.3, toppair:8.7, botpair:8.7, monotone:5.2},
+    noace:{all:78.3,  normal:43.7, straight:16.0, toppair:7.4, botpair:7.4, monotone:4.0},
+    acehi:{all:21.7,  normal:14.7, straight:3.3,  toppair:1.3, botpair:1.3, monotone:1.2}
+  };
+  function updateFreqReadout(){
+    if(aceFilter==='any'&&texFilter==='all'){
+      freqReadout.style.visibility='hidden';
+      freqReadout.innerHTML='&nbsp;';
+      return;
+    }
+    freqReadout.style.visibility='visible';
+    const pct=FLOP_FREQ[aceFilter][texFilter];
+    const label=pct===100?'100':pct.toFixed(1);
+    freqReadout.innerHTML=`This flop type occurs <span class="freq-pct">${label}%</span> of the time`;
+  }
+  let heroBlocked=false,flopBlocked=false,turnBlocked=false,riverBlocked=false;
+
+  const $=id=>document.getElementById(id);
+  const heroEl=$('hero'),villainEl=$('villain'),boardEl=$('board'),counterEl=$('counter');
+  const freqReadout=$('freqReadout');
+  const flopGroup=$('flopGroup'),turnGroup=$('turnGroup'),riverGroup=$('riverGroup');
+  const flopTrayLine=$('flopTrayLine'),turnTrayLine=$('turnTrayLine'),riverTrayLine=$('riverTrayLine');
+  const heroTrayLine=$('heroTrayLine');
+  const heroBtn=$('dealHero'),flopBtn=$('dealFlop'),turnBtn=$('dealTurn'),riverBtn=$('dealRiver');
+  const overlay=$('pickerOverlay'),pickerTitle=$('pickerTitle'),pickerSub=$('pickerSubtitle');
+  const pickerSelDiv=$('pickerSelected'),rankGrid=$('rankGrid'),suitGrid=$('suitGrid');
+  const stepBackBtn=$('stepBackBtn'),step1pill=$('step1pill'),step2pill=$('step2pill');
+  const cancelBtn=$('pickerCancel'),confirmBtn=$('pickerConfirm');
+
+  let pickerMode=null,pickerMax=2,pickerSelected=[],pendingRank=null;
+
+  // Card nodes
+  const cardNode=(code,newDeal=false)=>{
+    const d=document.createElement('div');
+    d.className='card'+(newDeal?' deal':'');
+    const s=cardSuit(code);
+    d.innerHTML=`<span style="color:#000">${cardRank(code)}</span><span style="color:${s==='H'||s==='D'?'#cc0000':'#000'}">${suitSym[s]}</span>`;
+    return d;
+  };
+  const backNode=(newDeal=false)=>{const d=document.createElement('div');d.className='card back'+(newDeal?' deal':'');return d};
+
+  // Flop filter logic
+  const acesInDeck=()=>deck.filter(c=>cardRank(c)==='A').length;
+
+  const canFlopStraight=boardVals=>{
+    const bs=new Set(boardVals);
+    if(bs.has(14))bs.add(1);
+    const all=[1,2,3,4,5,6,7,8,9,10,11,12,13,14];
+    for(let i=0;i<all.length;i++)for(let j=i;j<all.length;j++){
+      const combined=new Set([...bs,all[i],all[j]]);
+      if(combined.has(14))combined.add(1);
+      if(combined.has(1))combined.add(14);
+      const sorted=[...combined].sort((a,b)=>a-b);
+      for(let k=0;k<=sorted.length-5;k++)
+        if(sorted[k+4]-sorted[k]===4&&sorted[k+1]-sorted[k]===1&&sorted[k+2]-sorted[k]===2&&sorted[k+3]-sorted[k]===3)return true;
+    }
+    return false;
+  };
+
+  const isNormal=cards=>{
+    const vals=cards.map(rankVal),suits=cards.map(cardSuit);
+    return new Set(vals).size===3&&new Set(suits).size>1&&!canFlopStraight(vals);
+  };
+  const isStraight=cards=>new Set(cards.map(cardSuit)).size>1&&canFlopStraight(cards.map(rankVal));
+  const isMonotone=cards=>new Set(cards.map(cardSuit)).size===1;
+  const isTopPair=cards=>{const v=cards.map(rankVal).sort((a,b)=>b-a);return v[0]===v[1]};
+  const isBotPair=cards=>{const v=cards.map(rankVal).sort((a,b)=>a-b);return v[0]===v[1]};
+
+  const passesAce=cards=>aceFilter==='any'||(aceFilter==='acehi'?hasAce(cards):!hasAce(cards));
+  const passesTexture=cards=>{
+    if(texFilter==='all')return true;
+    if(texFilter==='normal')return isNormal(cards);
+    if(texFilter==='straight')return isStraight(cards);
+    if(texFilter==='monotone')return isMonotone(cards);
+    if(texFilter==='toppair')return isTopPair(cards);
+    if(texFilter==='botpair')return isBotPair(cards);
+    return true;
+  };
+
+  const dealFilteredFlop=()=>{
+    const saved=deck.slice();
+    for(let attempt=0;attempt<2000;attempt++){
+      const d=saved.slice();shuffle(d);
+      const three=d.slice(0,3);
+      if(passesAce(three)&&passesTexture(three)){
+        deck=saved.slice();
+        three.forEach(c=>{const i=deck.indexOf(c);if(i>-1)deck.splice(i,1)});
+        return three;
+      }
+    }
+    deck=saved.slice();shuffle(deck);
+    return[deck.shift(),deck.shift(),deck.shift()];
+  };
+
+  const pickerFlopValid=chosen=>{
+    if(!passesAce(chosen)){alert(aceFilter==='acehi'?'Must contain at least one Ace.':'Cannot contain an Ace.');return false}
+    if(!passesTexture(chosen)){
+      const labels={normal:'Normal',straight:'Straightening',monotone:'Monotone',toppair:'Top Pair',botpair:'Bot Pair'};
+      alert(`Does not match "${labels[texFilter]}" filter.`);return false;
+    }
+    return true;
+  };
+
+  // Toggle wiring
+  document.querySelectorAll('#aceToggleRow .toggle-btn').forEach(btn=>btn.onclick=()=>{
+    aceFilter=btn.dataset.ace;
+    document.querySelectorAll('#aceToggleRow .toggle-btn').forEach(b=>{
+      b.className=b.className.split(' ').filter(c=>!c.startsWith('active-')).join(' ');
+    });
+    btn.classList.add('active-'+aceFilter);
+    updateButtons();
+    updateFreqReadout();
+  });
+  document.querySelectorAll('#texToggleRow .toggle-btn').forEach(btn=>btn.onclick=()=>{
+    texFilter=btn.dataset.tex;
+    document.querySelectorAll('#texToggleRow .toggle-btn').forEach(b=>{
+      b.className=b.className.split(' ').filter(c=>!c.startsWith('active-')).join(' ');
+    });
+    btn.classList.add(texFilter==='all'?'active-tall':'active-'+texFilter);
+    updateFreqReadout();
+  });
+
+  // Core game
+  const flopDealt=()=>board[0]!==null;
+  const deal=(n,t,s=0)=>{const out=[];for(let i=0;i<n;i++){if(!deck.length)return out;t[s+i]=deck.shift();out.push(t[s+i])}return out};
+
+  function updateButtons(){
+    const fd=flopDealt(),td=board[3]!==null,rd=board[4]!==null;
+    const aceBlocked=aceFilter==='acehi'&&acesInDeck()===0;
+    // Locks once Hero already has a full hand and a flop is out — no more
+    // editing Hero mid-hand, either via the Deal button or tapping the cards.
+    heroBlocked=(fd&&deck.length<2)||(hero.length>=2&&fd);
+    flopBlocked=td||deck.length<3||aceBlocked;
+    turnBlocked=!fd||rd||deck.length<1;
+    riverBlocked=!td||deck.length<1;
+    heroBtn.disabled=heroBlocked;
+    flopBtn.disabled=flopBlocked;
+    turnBtn.disabled=turnBlocked;
+    riverBtn.disabled=riverBlocked;
+    // Underline only shows for a group while its picker is reachable
+    flopTrayLine.style.visibility=flopBlocked?'hidden':'visible';
+    turnTrayLine.style.visibility=turnBlocked?'hidden':'visible';
+    riverTrayLine.style.visibility=riverBlocked?'hidden':'visible';
+    heroTrayLine.style.visibility=heroBlocked?'hidden':'visible';
+  }
+
+  function updateCounter(){
+    const showCards=flopDealt()&&hero.length>=2;
+    const cardsPart=showCards?` <span class="separator">|</span> Cards Left ${deck.length}`:'';
+    counterEl.innerHTML=`F ${counters.flop} <span class="separator">|</span> T ${counters.turn} <span class="separator">|</span> R ${counters.river}${cardsPart}`;
+  }
+
+  function draw(newHero=false,newFlop=[],newTurn=false,newRiver=false){
+    updateButtons();
+
+    heroEl.innerHTML='';
+    hero.forEach(c=>heroEl.appendChild(cardNode(c,newHero)));
+    while(heroEl.children.length<2)heroEl.appendChild(backNode());
+    Array.from(heroEl.children).forEach(el=>{
+      el.classList.add('card-tap');
+      el.classList.toggle('blocked',heroBlocked);
+    });
+
+    flopGroup.innerHTML='';turnGroup.innerHTML='';riverGroup.innerHTML='';
+    board.forEach((c,i)=>{
+      const n=(i<3&&newFlop.includes(c))||(i===3&&newTurn)||(i===4&&newRiver);
+      const el=c?cardNode(c,n):backNode();
+      const blocked=i<3?flopBlocked:(i===3?turnBlocked:riverBlocked);
+      el.classList.add('card-tap');
+      el.classList.toggle('blocked',blocked);
+      el.dataset.slot=i;
+      (i<3?flopGroup:(i===3?turnGroup:riverGroup)).appendChild(el);
+    });
+
+    villainEl.innerHTML='';
+    villainEl.appendChild(backNode());
+    villainEl.appendChild(backNode());
+    updateCounter();
+  }
+
+  // Picker
+  const dealtSet=()=>{
+    const s=new Set(buildDeck().filter(c=>!deck.includes(c)));
+    pickerSelected.forEach(c=>s.delete(c));
+    return s;
+  };
+
+  function renderTray(){
+    pickerSelDiv.innerHTML='';
+    if(!pickerSelected.length){
+      const p=document.createElement('span');p.className='sel-placeholder';p.textContent='No cards selected';pickerSelDiv.appendChild(p);
+    } else {
+      pickerSelected.forEach(code=>{
+        const s=cardSuit(code);
+        const el=document.createElement('div');el.className='sel-card';
+        el.style.color=(s==='H'||s==='D')?'#cc0000':'#000';
+        el.innerHTML=`${cardDisplay(code)}<span class="remove"> ✕</span>`;
+        el.onclick=()=>{pickerSelected=pickerSelected.filter(c=>c!==code);renderTray();showStep1()};
+        pickerSelDiv.appendChild(el);
+      });
+    }
+    confirmBtn.disabled=pickerSelected.length!==pickerMax;
+  }
+
+  function showStep1(){
+    pendingRank=null;
+    rankGrid.style.display='grid';suitGrid.style.display='none';stepBackBtn.style.display='none';
+    step1pill.className='step-pill active';step2pill.className='step-pill';
+    const dealt=dealtSet();
+    rankGrid.innerHTML='';
+    ranks.forEach(r=>{
+      const btn=document.createElement('button');btn.className='rank-btn';btn.textContent=r;
+      if(suitKeys.every(s=>dealt.has(r+s)&&!pickerSelected.includes(r+s))){btn.disabled=true;btn.style.opacity='.22';btn.style.filter='grayscale(60%)'}
+      btn.onclick=()=>{pendingRank=r;showStep2(r)};
+      rankGrid.appendChild(btn);
+    });
+  }
+
+  function showStep2(rank){
+    rankGrid.style.display='none';suitGrid.style.display='grid';stepBackBtn.style.display='block';
+    step1pill.className='step-pill done';step2pill.className='step-pill active';
+    const dealt=dealtSet();
+    suitGrid.innerHTML='';
+    suitKeys.forEach(s=>{
+      const code=rank+s;
+      const btn=document.createElement('button');btn.className='suit-btn';btn.style.color=suitColor[s];
+      btn.innerHTML=`<span style="font-size:60px">${suitSym[s]}</span>`;
+      if(dealt.has(code)||pickerSelected.includes(code)){btn.classList.add('dealt');btn.disabled=true}
+      else btn.onclick=()=>{if(pickerSelected.length<pickerMax){pickerSelected.push(code);renderTray();showStep1()}};
+      suitGrid.appendChild(btn);
+    });
+  }
+
+  stepBackBtn.onclick=()=>showStep1();
+  cancelBtn.onclick=closePicker;
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closePicker()});
+
+  confirmBtn.onclick=()=>{
+    if(pickerSelected.length!==pickerMax)return;
+    const chosen=pickerSelected.slice(),mode=pickerMode;
+    closePicker();
+    if(mode==='hero'){
+      if(!flopDealt()){deck=buildDeck();shuffle(deck)}
+      hero=[];chosen.forEach(c=>{const i=deck.indexOf(c);if(i>-1)deck.splice(i,1);hero.push(c)});draw(true);
+    } else if(mode==='flop'){
+      if(!pickerFlopValid(chosen))return openPicker('flop');
+      if(!hero.length){deck=buildDeck();shuffle(deck)}
+      board.fill(null,0,3);
+      chosen.forEach((c,i)=>{deck.splice(deck.indexOf(c),1);board[i]=c});
+      counters.flop++;draw(false,chosen);
+    } else if(mode==='turn'){
+      deck.splice(deck.indexOf(chosen[0]),1);board[3]=chosen[0];counters.turn++;draw(false,[],true);
+    } else if(mode==='river'){
+      deck.splice(deck.indexOf(chosen[0]),1);board[4]=chosen[0];counters.river++;draw(false,[],false,true);
+    }
+  };
+
+  function openPicker(mode){
+    if(mode==='hero'&&!flopDealt()){deck=buildDeck();shuffle(deck)}
+    if(mode==='flop'&&!hero.length){deck=buildDeck();shuffle(deck)}
+    pickerMode=mode;pickerSelected=[];pendingRank=null;
+    const cfg={hero:[2,'Pick Hero Hand','Pick rank → suit (need 2)'],flop:[3,'Pick Flop','Pick rank → suit (need 3)'],turn:[1,'Pick Turn','Pick a rank then suit'],river:[1,'Pick River','Pick a rank then suit']};
+    [pickerMax]=cfg[mode];pickerTitle.textContent=cfg[mode][1];pickerSub.textContent=cfg[mode][2];
+    renderTray();showStep1();
+    overlay.classList.add('open');document.body.style.overflow='hidden';
+  }
+
+  function closePicker(){
+    overlay.classList.remove('open');document.body.style.overflow='';
+    pickerMode=null;pickerSelected=[];pendingRank=null;
+  }
+
+  heroEl.onclick=()=>{if(!heroBlocked)openPicker('hero')};
+  boardEl.onclick=e=>{
+    const el=e.target.closest('.card');
+    if(!el)return;
+    const idx=parseInt(el.dataset.slot,10);
+    if(idx<3){if(!flopBlocked)openPicker('flop')}
+    else if(idx===3){if(!turnBlocked)openPicker('turn')}
+    else if(idx===4){if(!riverBlocked)openPicker('river')}
+  };
+
+  heroBtn.onclick=()=>{if(!flopDealt()){deck=buildDeck();shuffle(deck)}hero=[];deal(2,hero);draw(true)};
+  flopBtn.onclick=()=>{
+    if(!hero.length){deck=buildDeck();shuffle(deck)}
+    board.fill(null,0,3);const f=dealFilteredFlop();f.forEach((c,i)=>board[i]=c);counters.flop++;draw(false,f);
+  };
+  turnBtn.onclick=()=>{board[3]=null;deal(1,board,3);counters.turn++;draw(false,[],true)};
+  riverBtn.onclick=()=>{board[4]=null;deal(1,board,4);counters.river++;draw(false,[],false,true)};
+  $('clear').onclick=()=>{deck=buildDeck();shuffle(deck);hero=[];board=[null,null,null,null,null];counters={flop:0,turn:0,river:0};draw()};
+
+  deck=buildDeck();shuffle(deck);draw();
+  updateFreqReadout();
+
+  // Toggle bar alignment: texture row centered, ace row left-aligned to it
+  // Equal-width buttons within each toggle row — desktop only.
+  // Mobile no longer needs this: both rows use flex:1 with matching
+  // item counts (ace row's 3 real + 3 invisible spacers = 6, same as
+  // texture row's 6), so CSS alone guarantees identical widths.
+  // Try a real orientation lock where the platform allows it (Android Chrome/Firefox).
+  // Rejects on iOS and outside fullscreen — the CSS landscape block covers those.
+  screen.orientation?.lock?.('portrait').catch(()=>{});
+
+  // iOS Safari only renders :active styles when a touch listener exists
+  // somewhere on the page. This no-op listener unlocks that behavior globally.
+  document.addEventListener('touchstart',function(){},{passive:true});
+})();
+</script>
+</body>
+</html>
